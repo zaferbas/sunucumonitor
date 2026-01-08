@@ -1,0 +1,16 @@
+[Unit]
+Description=Sunucu Monitor Collector
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/sunucumonitor
+ExecStart=/usr/bin/python3 /opt/sunucumonitor/collector.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,10 @@
+{
+  "target_url": "https://your-server.com/api/metrics",
+  "api_key": "your-api-key-here",
+  "server_id": "server-01",
+  "interval": 60,
+  "top_processes": 10,
+  "retry_count": 3,
+  "retry_delay": 2,
+  "max_queue_size": 1000
+}
