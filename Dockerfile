@@ -46,11 +46,11 @@ RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/bootstrap/cache
 
 # Nginx configuration
-RUN rm /etc/nginx/http.d/default.conf
-COPY docker/nginx.conf /etc/nginx/http.d/default.conf
+RUN rm -f /etc/nginx/http.d/default.conf \
+    && cp /var/www/html/docker/nginx.conf /etc/nginx/http.d/default.conf
 
-# Supervisor configuration
-COPY docker/supervisord.conf /etc/supervisord.conf
+# Supervisor configuration  
+RUN cp /var/www/html/docker/supervisord.conf /etc/supervisord.conf
 
 # PHP-FPM configuration
 RUN sed -i 's/listen = 127.0.0.1:9000/listen = \/var\/run\/php-fpm.sock/' /usr/local/etc/php-fpm.d/www.conf \
