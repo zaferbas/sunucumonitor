@@ -1,7 +1,12 @@
 # Sunucu Monitor - Nixpacks Configuration for Coolify
+# PHP Laravel application with Supervisor for scheduler
 
 [phases.setup]
-nixPkgs = ["python311Packages.supervisor"]
+nixPkgs = ["php83", "php83Packages.composer", "nginx", "python311Packages.supervisor"]
+aptPkgs = ["sqlite3"]
+
+[phases.install]
+cmds = ["composer install --no-dev --optimize-autoloader --no-interaction"]
 
 [phases.build]
 cmds = [
@@ -11,7 +16,6 @@ cmds = [
     "chmod +x /assets/start.sh",
     "mkdir -p database",
     "touch database/database.sqlite",
-    "php artisan migrate --force",
     "php artisan config:cache",
     "php artisan route:cache",
     "php artisan view:cache"
