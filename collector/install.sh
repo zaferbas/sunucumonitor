@@ -53,7 +53,7 @@ fi
 
 # Python bağımlılıklarını yükle
 echo "Python bağımlılıkları yükleniyor..."
-pip3 install -r "$INSTALL_DIR/requirements.txt"
+pip3 install -r "$INSTALL_DIR/requirements.txt" --break-system-packages 2>/dev/null || pip3 install -r "$INSTALL_DIR/requirements.txt"
 
 # Systemd service oluştur
 echo "Systemd service oluşturuluyor..."
