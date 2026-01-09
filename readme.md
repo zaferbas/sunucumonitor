@@ -2,8 +2,6 @@
 
 Çoklu sunucudan sistem metriklerini (CPU, RAM, Disk, Network, Process) toplayan ve grafiklerle görselleştiren izleme sistemi.
 
-![Dashboard](https://via.placeholder.com/800x400?text=Dashboard+Screenshot)
-
 ## Özellikler
 
 - 🖥️ **Çoklu Sunucu Desteği** - Sınırsız sayıda sunucu izleme
@@ -12,6 +10,7 @@
 - 🔄 **Güvenilir Collector** - Offline durumda veri kaybı yok
 - 📱 **Responsive Dashboard** - Mobil uyumlu arayüz
 - 🐳 **Coolify Ready** - Dockerfile ile kolay deployment
+- 💾 **SQLite** - Harici veritabanı gerektirmez
 
 ## Mimari
 
@@ -24,34 +23,75 @@
          └──────── Retry + Local Queue ─────────┘
 ```
 
-## Hızlı Başlangıç
+---
 
-### 1. Laravel Projesini Kur (Coolify)
+## Coolify Deployment
 
-1. Coolify'da yeni bir proje oluşturun
-2. GitHub repo'sunu bağlayın
-3. Build Pack: **Dockerfile**
-4. Environment Variables ekleyin:
+### 1. Yeni Uygulama Oluştur
+
+| Ayar | Değer |
+|------|-------|
+| **Repository** | `https://github.com/zaferbas/sunucumonitor` |
+| **Branch** | `main` |
+| **Build Pack** | `Dockerfile` |
+| **Port** | `80` |
+| **Base Directory** | `/` |
+
+### 2. Persistent Storage (ÖNEMLİ!)
+
+SQLite veritabanı container içinde tutulduğu için **Persistent Storage** gereklidir. Yoksa her deploy'da veriler silinir!
+
+**Coolify > Configuration > Persistent Storage:**
+
+| Host Path | Container Path | Açıklama |
+|-----------|---------------|----------|
+| `/data/sunucumonitor/database` | `/var/www/html/database` | SQLite veritabanı |
+| `/data/sunucumonitor/storage` | `/var/www/html/storage` | Laravel storage |
+
+**Adımlar:**
+1. Sol menüden **Persistent Storage** sekmesine gidin
+2. **Add Storage** butonuna tıklayın
+3. İlk satırı ekleyin:
+   - **Host Path:** `/data/sunucumonitor/database`
+   - **Container Path:** `/var/www/html/database`
+4. İkinci satırı ekleyin:
+   - **Host Path:** `/data/sunucumonitor/storage`
+   - **Container Path:** `/var/www/html/storage`
+
+### 3. Environment Variables
+
+**Coolify > Configuration > Environment Variables:**
 
 ```env
-APP_NAME="Sunucu Monitor"
+APP_NAME=SunucuMonitor
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://your-domain.com
+APP_KEY=base64:GENERATE_OR_LEAVE_EMPTY
 
-DB_CONNECTION=mysql
-DB_HOST=your-mysql-host
-DB_PORT=3306
-DB_DATABASE=sunucumonitor
-DB_USERNAME=your-username
-DB_PASSWORD=your-password
+DB_CONNECTION=sqlite
 
-MONITOR_API_KEY=your-secret-api-key
+MONITOR_API_KEY=guclu-bir-api-key-buraya
+MONITOR_RETENTION_RAW=7
+MONITOR_RETENTION_PROCESSES=3
+MONITOR_RETENTION_HOURLY=90
+MONITOR_RETENTION_DAILY=365
 ```
 
-5. Deploy edin
+> ⚠️ **MONITOR_API_KEY** değerini güçlü bir şifre yapın ve collector'larda aynısını kullanın!
 
-### 2. Collector'ı Kaynak Sunuculara Kur
+### 4. Deploy
+
+**Deploy** butonuna basın. İlk deployment'da:
+- SQLite veritabanı otomatik oluşturulur
+- Migrations otomatik çalışır
+- Cache'ler oluşturulur
+
+---
+
+## Collector Kurulumu
+
+### Otomatik Kurulum (Linux)
 
 ```bash
 # Dosyaları sunucuya kopyala
@@ -68,45 +108,47 @@ sudo bash install.sh
 sudo nano /opt/sunucumonitor/config.json
 ```
 
-**config.json örneği:**
+### config.json
+
 ```json
 {
-  "target_url": "https://your-monitor.com/api/metrics",
-  "api_key": "your-secret-api-key",
+  "target_url": "https://your-domain.com/api/metrics",
+  "api_key": "guclu-bir-api-key-buraya",
   "server_id": "web-server-01",
   "interval": 60,
-  "top_processes": 10
+  "top_processes": 10,
+  "retry_count": 3,
+  "retry_delay": 2,
+  "max_queue_size": 1000
 }
 ```
 
+### Servisi Başlat
+
 ```bash
-# Servisi başlat
 sudo systemctl start sunucumonitor
 sudo systemctl enable sunucumonitor
+sudo systemctl status sunucumonitor
 
-# Logları kontrol et
+# Logları izle
 sudo journalctl -u sunucumonitor -f
 ```
 
-## Collector Özellikleri
-
-| Özellik | Açıklama |
-|---------|----------|
-| **Retry** | Bağlantı hatalarında 3x deneme (exponential backoff) |
-| **Local Queue** | Offline durumda verileri `queue.json`'a kaydet |
-| **Timestamp** | Orijinal ölçüm zamanı korunur |
-| **Auto Sync** | Bağlantı gelince kuyruk otomatik gönderilir |
+---
 
 ## API Endpoints
 
 | Method | Endpoint | Açıklama |
 |--------|----------|----------|
 | `GET` | `/api/health` | Health check |
-| `POST` | `/api/metrics` | Metrik gönder |
+| `POST` | `/api/metrics` | Metrik gönder (collector) |
 | `GET` | `/api/servers` | Sunucu listesi |
 | `GET` | `/api/servers/{id}` | Sunucu detay |
 | `GET` | `/api/servers/{id}/metrics` | Metrik geçmişi |
-| `GET` | `/api/servers/{id}/users` | Kullanıcı özeti |
+
+Tüm POST/GET istekleri `X-API-Key` header'ı gerektirir.
+
+---
 
 ## Veri Saklama
 
@@ -117,68 +159,35 @@ sudo journalctl -u sunucumonitor -f
 | Saatlik özetler | 90 gün |
 | Günlük özetler | 1 yıl |
 
-`.env` ile özelleştirin:
-```env
-MONITOR_RETENTION_RAW=7
-MONITOR_RETENTION_PROCESSES=3
-MONITOR_RETENTION_HOURLY=90
-MONITOR_RETENTION_DAILY=365
-```
+---
 
-## Komutlar
+## Collector Özellikleri
 
-```bash
-# Saatlik özet oluştur
-php artisan metrics:aggregate --period=hourly
+| Özellik | Açıklama |
+|---------|----------|
+| **Retry** | Bağlantı hatalarında 3x deneme (exponential backoff) |
+| **Local Queue** | Offline durumda verileri kaydet |
+| **Timestamp** | Orijinal ölçüm zamanı korunur |
+| **Auto Sync** | Bağlantı gelince kuyruk otomatik gönderilir |
 
-# Günlük özet oluştur
-php artisan metrics:aggregate --period=daily
+---
 
-# Eski verileri sil (dry-run)
-php artisan metrics:prune --dry-run
-
-# Eski verileri sil
-php artisan metrics:prune
-```
-
-## Geliştirme
+## Lokal Geliştirme
 
 ```bash
-# Clone
-git clone https://github.com/your-repo/sunucumonitor.git
+git clone https://github.com/zaferbas/sunucumonitor.git
 cd sunucumonitor
 
-# Dependencies
 composer install
-
-# Environment
 cp .env.example .env
 php artisan key:generate
-
-# Database
+touch database/database.sqlite
 php artisan migrate
 
-# Server
 php artisan serve
 ```
 
-## Collector Test
-
-```bash
-cd collector
-
-# Bağımlılıkları yükle
-pip3 install -r requirements.txt
-
-# JSON çıktısını gör (gönderme)
-python3 collector.py --dry-run
-
-# Tek seferlik gönder
-python3 collector.py --once
-
-# Bağlantı testi
-python3 collector.py --test
-```
+---
 
 ## Lisans
 

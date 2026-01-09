@@ -40,10 +40,15 @@ COPY . .
 # Install dependencies
 RUN composer install --no-dev --optimize-autoloader --no-interaction
 
+# Create SQLite database directory and file
+RUN mkdir -p /var/www/html/database \
+    && touch /var/www/html/database/database.sqlite
+
 # Set permissions
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 755 /var/www/html/storage \
-    && chmod -R 755 /var/www/html/bootstrap/cache
+    && chmod -R 755 /var/www/html/bootstrap/cache \
+    && chmod -R 775 /var/www/html/database
 
 # Nginx configuration
 RUN rm -f /etc/nginx/http.d/default.conf \
@@ -63,5 +68,9 @@ RUN mkdir -p /var/run /var/log/nginx /var/log/supervisor
 # Expose port
 EXPOSE 80
 
-# Start supervisor
+# Entrypoint - run migrations and start
+COPY docker/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["supervisord", "-c", "/etc/supervisord.conf"]
