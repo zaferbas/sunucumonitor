@@ -2,7 +2,7 @@
 # PHP Laravel application with Supervisor for scheduler
 
 [phases.setup]
-nixPkgs = ["php83", "php83Packages.composer", "nginx", "python311Packages.supervisor"]
+nixPkgs = ["php83", "php83Packages.composer", "nginx", "nodejs_22", "python311Packages.supervisor"]
 aptPkgs = ["sqlite3"]
 
 [phases.install]
